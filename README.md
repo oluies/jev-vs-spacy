@@ -8,6 +8,7 @@ two email tasks, the same test rows and the same deterministic scorers:
 | `spacy` | spaCy `textcat` (bag-of-bigrams + small CNN ensemble), trained on the task's own labelled data, local CPU | nothing |
 | `spacy-20shot` | the same pipeline trained on only 20 labelled examples per class | nothing |
 | `jev` | [TypeSafe Jev](https://pydantic.dev/docs/ai/models/typesafe/), a System One decision model, zero-shot | `TYPESAFE_API_KEY` |
+| `laya` | [Laya](https://github.com/NandhaKishorM/laya) 0.3.5, an open-weight System One model (Apache 2.0), run **locally**, zero-shot, asked exactly the questions Jev is asked | `uv sync --group laya` (torch, ~3 GB of checkpoints) |
 | `claude` | Claude Opus 5 via structured output at `effort=low`, zero-shot, the same schema Jev reads | `ANTHROPIC_API_KEY` |
 
 | task | data | test set |
@@ -28,6 +29,7 @@ uv run python data.py                    # download + split both datasets into d
 uv run python train_spacy.py             # ~6 min CPU: models/spam, models/route
 uv run python train_spacy.py --shots 20  # ~6 min CPU: models/*-20shot (each task, incl. scenario_sv)
 uv run pytest -q                         # offline: Jev and Claude paths against fakes
+uv sync --group laya                     # optional: adds the local Laya contestant (torch + transformers)
 uv run ruff format && uv run ruff check && uv run ty check   # format, lint, type-check (as CI does)
 
 export BRAINTRUST_API_KEY=... TYPESAFE_API_KEY=... ANTHROPIC_API_KEY=...
@@ -66,6 +68,7 @@ recall, and `precision · spam`, only scored on rows predicted spam, gives true 
 | spaCy, full training split (12k / 23.6k rows) | 98.0% | 96.7% | 99.3% | 100% | 0.4–2 ms | 0.5–8 ms |
 | spaCy, 20 labelled per class | 73.7% | 61.3% | 81.4% | 94.2% | 0.4–2 ms | 0.4–8 ms |
 | **Jev, zero-shot** (`jev-latest`) | **98.0%** | **97.3%** | **98.6%** | **97.8%** | ~300 ms | ~375–400 ms |
+| Laya, zero-shot, local (Apple MPS) | 97.0% | 99.3% | 94.9% | 87.6% | 47–66 ms | |
 | Claude Opus 5, zero-shot | – | – | – | – | – | – |
 
 **Swedish (`scenario_sv`, 360 test requests, not logged to Braintrust: the month's score quota was used up)**
@@ -75,6 +78,7 @@ recall, and `precision · spam`, only scored on rows predicted spam, gives true 
 | spaCy + `sv_core_news_md` vectors, full training split (11k) | 84.4% | 0.4 ms |
 | spaCy + `sv_core_news_md` vectors, 20 labelled per class | 68.3% | 0.4 ms |
 | **Jev, zero-shot** (English criteria, Swedish text) | **88.9%** | ~306 ms |
+| Laya `laya-multilingual`, zero-shot, local | 54.4% | 26 ms |
 
 Jev beat even the fully trained Swedish spaCy model here. At confidence ≥ 0.8 (85% of requests) it
 scored 94.4%. Most errors involve MASSIVE's catch-all `general` class and the `play`/`music` overlap,
@@ -96,6 +100,28 @@ spaCy runs in-process on CPU.
   were three consistent confusions (withdrawal fees → payment, consumer claim → refund, arrival time →
   order), so I revised four descriptions *on the dev split* (93.0% → 98.4%) and then scored the test
   set once. The test set was not used to choose the wording.
+
+## Laya: an open-weight Jev, run locally
+
+[Laya](https://github.com/NandhaKishorM/laya) answers the same typed questions as Jev (`choice`,
+`score`, `noul`) with a local encoder (ModernBERT-large for English, mmBERT-base multilingual), so no
+text leaves the machine, which removes the data-protection problem below. `system_one_questions()` builds
+its questions from the same schemas, and a test checks they equal what Pydantic AI sends Jev.
+
+- **Spam:** close to Jev (97.0% vs 98.0%), with higher recall (99.3%) and lower precision (94.9%),
+  at 66 ms locally instead of ~300 ms over the network.
+- **English routing:** 87.6%, below Jev (97.8%) and below spaCy trained on 20 examples per class
+  (94.2%). Its errors cluster: `feedback → refund` (13) and `cancel → invoice` (7).
+- **Swedish routing:** 54.4%, far below Jev (88.9%) and spaCy 20-shot (68.3%). The multilingual
+  checkpoint was chosen on the dev split (53.3%, against 31.9% for either English checkpoint).
+- **Confidence** separates errors less well than Jev's: its wrong spam answers averaged 0.64 against
+  Jev's 0.24.
+- Laya's README claims it beats Jev. On these three datasets it does not.
+
+Caveats: the English routing descriptions were tuned for Jev (on the dev split), and Laya's were not
+tuned at all. Laya was released on 2026-09-18, so it may improve quickly. Laya's own benchmarks
+use other datasets. The source was reviewed before installing: weights load through `safetensors`,
+with no `trust_remote_code` and no network calls beyond the Hugging Face download.
 
 ## Jev labels, spaCy learns (`distill.py`)
 
@@ -226,7 +252,7 @@ keep the text in-house, from strictest to loosest:
 - `settings.py`: typed run configuration from env vars or `.env` (pydantic-settings)
 - `data.py`: builds deterministic, de-duplicated, stratified splits into `data/`
 - `train_spacy.py` + `configs/textcat.cfg`: spaCy training, full or `--shots N`
-- `contestants.py`: the tasks each contestant exposes
+- `contestants.py`: the tasks each contestant exposes, and `system_one_questions()` shared by Jev and Laya
 - `scorers.py`: accuracy, per-class recall, spam precision
 - `eval_email.py`: the Braintrust entry point
 - `distill.py`: Jev labels an unlabelled pool, and spaCy trains on those labels

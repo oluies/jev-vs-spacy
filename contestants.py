@@ -4,6 +4,8 @@
     spacy-<variant>  the same pipeline trained on less or different data: -20shot, or distill.py's
                      -gold2000 / -jev2000 / -jev80_2000 (see distill.py)
     jev     TypeSafe's Jev via Pydantic AI, zero-shot, reading the schemas in labels.py
+    laya    Laya, an open-weight System One model run locally (optional `laya` dependency group),
+            zero-shot, asked exactly the questions Jev is asked
     claude  a general LLM via Pydantic AI, zero-shot, with the very same schemas as structured output
 
 Tasks: spam, route (English) and scenario_sv (Swedish). A spaCy contestant runs the tasks it has a
@@ -13,8 +15,10 @@ Every task returns `{"label": str, "confidence": float | None}` and records mode
 (probabilities, model version, tokens) in the Braintrust span metadata via `hooks.meta`.
 """
 
+import importlib.util
 import os
 import re
+import threading
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from functools import cache
@@ -145,6 +149,56 @@ def _llm[O: BaseModel](output_type: type[O], model: Model | str = LLM_MODEL) -> 
     )
 
 
+# --- Laya (local, open weights) ----------------------------------------------------------------
+
+
+def system_one_questions(output_type: type[BaseModel]) -> dict[str, dict[str, Any]]:
+    """The TypeSafe-format questions for an output schema, built the way Pydantic AI builds Jev's:
+    the docstring is the goal, the field description the question, each `anyOf` option's
+    description its criterion, and a `bool` field a yes/no (`noul`)."""
+    schema = output_type.model_json_schema()
+    return {
+        name: {
+            "type": "choice" if "anyOf" in prop else "noul",
+            "instructions": {"field": name, "question": prop["description"], "goal": schema["description"]},
+        }
+        | ({"criteria": {o["const"]: o.get("description") for o in prop["anyOf"]}} if "anyOf" in prop else {})
+        for name, prop in schema["properties"].items()
+    }
+
+
+@cache  # a checkpoint is ~1.5 GB; load each once per process
+def _laya_agent(repo: str):
+    import laya
+
+    return laya.load(repo)
+
+
+# One forward pass at a time: the model sits on one device, and Braintrust runs sync tasks in threads.
+_LAYA_LOCK = threading.Lock()
+
+
+def _laya(repo: str, schema: TaskSchema[Any]) -> SyncTask:
+    questions = system_one_questions(schema.output_type)
+
+    def run(input: dict, hooks) -> Prediction:
+        agent = _laya_agent(repo)
+        with _LAYA_LOCK:
+            answer = agent.system_one(input["text"], questions)["answers"][schema.field]
+        value = answer["choice"] if answer["type"] == "choice" else answer["noul"] >= 0.5
+        hooks.meta(model_version=repo, answer=answer)
+        return {
+            "label": schema.to_label(schema.output_type.model_validate({schema.field: value})),
+            "confidence": answer["confidence"],
+        }
+
+    return run
+
+
+def _laya_tasks() -> dict[str, Task]:
+    return {task: _laya(settings.laya_models[task], schema) for task, schema in SCHEMAS.items()}
+
+
 def _spacy_tasks(suffix: str = "") -> dict[str, Task]:
     """A spaCy task for every schema task with a trained `models/<task><suffix>`."""
     return {
@@ -184,6 +238,11 @@ def contestants() -> list[Contestant]:
         Contestant("spacy", "textcat ensemble, full training split", _spacy_tasks()),
         *(Contestant(f"spacy{suffix}", _describe(suffix), _spacy_tasks(suffix)) for suffix in _variant_suffixes()),
         Contestant("jev", JEV_MODEL, _agent_tasks(_jev), needs="TYPESAFE_API_KEY"),
+        *(
+            [Contestant("laya", "laya 0.3.5, local open weights", _laya_tasks())]
+            if importlib.util.find_spec("laya")  # only with `uv sync --group laya`
+            else []
+        ),
         Contestant(
             "claude",
             LLM_MODEL,

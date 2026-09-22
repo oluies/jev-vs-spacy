@@ -189,3 +189,51 @@ def test_jsonl_round_trip_keeps_unicode_line_separators(tmp_path):
     rows = [Example(message_id="1", text="first\u2028second\x1cthird\x85", label="ham")]
     write_jsonl(tmp_path / "rows.jsonl", rows)
     assert read_jsonl(tmp_path / "rows.jsonl", Example) == rows
+
+
+@pytest.mark.parametrize(
+    ("output_type", "answers"),
+    [
+        (SpamVerdict, {"is_spam": {"type": "noul", "noul": 0.1}}),
+        (Routing, {"category": {"type": "choice", "choice": "order", "confidence": 0.9, "probabilities": {}}}),
+        (ScenarioSv, {"scenario": {"type": "choice", "choice": "alarm", "confidence": 0.9, "probabilities": {}}}),
+    ],
+)
+def test_laya_is_asked_exactly_what_jev_is_asked(output_type, answers):
+    client = FakeJev(answers)
+    asyncio.run(jev_agent(client, output_type).run("some text"))
+    sent_to_jev = {name: q.model_dump(exclude_none=True) for name, q in client.asked[0][1].items()}
+
+    assert contestants.system_one_questions(output_type) == sent_to_jev
+
+
+class FakeLaya:
+    def __init__(self, answer: dict):
+        self.answer = answer
+        self.asked: list = []
+
+    def system_one(self, state, questions):
+        self.asked.append((state, questions))
+        return {"answers": {next(iter(questions)): self.answer}}
+
+
+@pytest.mark.parametrize(
+    ("task", "answer", "label"),
+    [
+        ("spam", {"type": "noul", "noul": 0.93, "confidence": 0.93}, SPAM),
+        ("spam", {"type": "noul", "noul": 0.2, "confidence": 0.8}, HAM),
+        ("route", {"type": "choice", "choice": "refund", "confidence": 0.7, "probabilities": {}}, "refund"),
+        ("scenario_sv", {"type": "choice", "choice": "weather", "confidence": 0.99, "probabilities": {}}, "weather"),
+    ],
+)
+def test_laya_task_turns_the_answer_into_a_label(monkeypatch, task, answer, label):
+    fake = FakeLaya(answer)
+    monkeypatch.setattr(contestants, "_laya_agent", lambda repo: fake)
+    run = contestants._laya("any/repo", contestants.SCHEMAS[task])
+    hooks = Hooks()
+
+    out = run({"text": "hej"}, hooks)
+
+    assert out == {"label": label, "confidence": answer["confidence"]}
+    assert fake.asked[0][0] == "hej"
+    assert hooks.metadata["answer"] == answer
