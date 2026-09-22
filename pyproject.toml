@@ -1,0 +1,24 @@
+[project]
+name = "jev-spacy-email"
+version = "0.1.0"
+description = "Braintrust bake-off: spaCy vs TypeSafe Jev vs Claude on email spam and support routing"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.13"
+dependencies = [
+    "braintrust>=0.41.0",
+    "duckdb>=1.5.5",
+    "pydantic>=2.13.5",
+    "pydantic-ai-slim[anthropic,typesafe]>=2.46.0",
+    "pydantic-settings>=2.15.0",
+    "spacy>=3.8.16",
+    "sv-core-news-md",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.uv.sources]
+sv-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/sv_core_news_md-3.8.0/sv_core_news_md-3.8.0-py3-none-any.whl" }
