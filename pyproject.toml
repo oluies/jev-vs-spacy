@@ -17,8 +17,22 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.11.2",
     "pytest>=9.1.1",
+    "ruff>=0.16.8",
+    "ty>=0.0.83",
 ]
 
 [tool.uv.sources]
 sv-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/sv_core_news_md-3.8.0/sv_core_news_md-3.8.0-py3-none-any.whl" }
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# pyflakes/pycodestyle, import order, pyupgrade, bugbear, ruff's own rules
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# en dashes in number ranges are intentional typography on the rendered card
+"figures/*" = ["RUF001"]

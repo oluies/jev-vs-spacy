@@ -6,10 +6,12 @@ a renamed field fails here instead of 300 paid requests into an eval.
 
 import asyncio
 import json
+from typing import Any
 
 import httpx2
 import pytest
 from anthropic import AsyncAnthropic
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.typesafe import TypeSafeModel
@@ -48,13 +50,20 @@ class FakeJev(AsyncTypeSafeClient):
         )
 
 
-def jev_agent(client: FakeJev, output_type) -> Agent:
+def jev_agent[O: BaseModel](client: FakeJev, output_type: type[O]) -> Agent[Any, O]:
     return contestants._jev(output_type, TypeSafeModel("jev-latest", provider=TypeSafeProvider(typesafe_client=client)))
 
 
 def test_jev_routing_sends_every_category_as_a_criterion():
     client = FakeJev(
-        {"category": {"type": "choice", "choice": "refund", "confidence": 0.91, "probabilities": {"refund": 0.93, "order": 0.07}}}
+        {
+            "category": {
+                "type": "choice",
+                "choice": "refund",
+                "confidence": 0.91,
+                "probabilities": {"refund": 0.93, "order": 0.07},
+            }
+        }
     )
     task = contestants._agent_task(lambda: jev_agent(client, Routing), "category", contestants._route_label)
     hooks = Hooks()
@@ -81,7 +90,9 @@ def test_jev_spam_is_a_yes_no_question():
 
 
 def test_jev_swedish_scenarios_send_english_criteria_with_swedish_state():
-    client = FakeJev({"scenario": {"type": "choice", "choice": "alarm", "confidence": 0.9, "probabilities": {"alarm": 0.9}}})
+    client = FakeJev(
+        {"scenario": {"type": "choice", "choice": "alarm", "confidence": 0.9, "probabilities": {"alarm": 0.9}}}
+    )
     task = contestants._agent_task(lambda: jev_agent(client, ScenarioSv), "scenario", contestants._scenario_label)
 
     out = asyncio.run(task({"text": "väck mig klockan sju"}, Hooks()))
@@ -90,7 +101,7 @@ def test_jev_swedish_scenarios_send_english_criteria_with_swedish_state():
     assert client.asked[0][1]["scenario"].criteria == SCENARIOS
 
 
-def anthropic_agent(reply: dict, seen: list) -> Agent:
+def anthropic_agent(reply: dict, seen: list) -> Agent[Any, Routing]:
     """A real Anthropic client whose HTTP transport returns `reply` as the model's JSON text."""
 
     def handler(request: httpx2.Request) -> httpx2.Response:
@@ -110,12 +121,16 @@ def anthropic_agent(reply: dict, seen: list) -> Agent:
         )
 
     client = AsyncAnthropic(api_key="test", http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handler)))
-    return contestants._llm(Routing, AnthropicModel("claude-opus-5", provider=AnthropicProvider(anthropic_client=client)))
+    return contestants._llm(
+        Routing, AnthropicModel("claude-opus-5", provider=AnthropicProvider(anthropic_client=client))
+    )
 
 
 def test_claude_routing_uses_structured_output_with_the_same_schema():
     seen: list = []
-    task = contestants._agent_task(lambda: anthropic_agent({"category": "invoice"}, seen), "category", contestants._route_label)
+    task = contestants._agent_task(
+        lambda: anthropic_agent({"category": "invoice"}, seen), "category", contestants._route_label
+    )
     hooks = Hooks()
 
     out = asyncio.run(task({"text": "I need a copy of last month's bill"}, hooks))
@@ -137,18 +152,20 @@ def test_spacy_contestant_returns_a_known_label():
     hooks = Hooks()
 
     out = spacy.tasks["route"]({"text": "how do I download my invoice?"}, hooks)
+    assert isinstance(out, dict)  # spaCy's tasks are synchronous
 
     assert out["label"] == "invoice"
     assert set(hooks.metadata["probabilities"]) == set(CATEGORIES)
 
 
 def test_scorers_give_precision_and_recall_through_skipped_rows():
-    tp, fp, fn = {"label": SPAM}, {"label": SPAM}, {"label": HAM}
-    assert correct(tp, SPAM).score == 1.0
-    assert recall_by_class(fn, SPAM).name == "recall · spam"
-    assert recall_by_class(fn, SPAM).score == 0.0
-    assert spam_precision(fp, HAM).score == 0.0
-    assert spam_precision(fn, SPAM) is None  # predicted ham: not part of precision
+    said_spam, said_ham = {"label": SPAM}, {"label": HAM}
+    assert correct(input={}, output=said_spam, expected=SPAM).score == 1.0
+    assert recall_by_class(input={}, output=said_ham, expected=SPAM).name == "recall · spam"
+    assert recall_by_class(input={}, output=said_ham, expected=SPAM).score == 0.0
+    false_positive = spam_precision(input={}, output=said_spam, expected=HAM)
+    assert false_positive is not None and false_positive.score == 0.0
+    assert spam_precision(input={}, output=said_ham, expected=SPAM) is None  # predicted ham: not in precision
 
 
 def test_records_reject_rows_that_do_not_fit_the_shape():
@@ -169,6 +186,6 @@ def test_records_reject_rows_that_do_not_fit_the_shape():
 def test_jsonl_round_trip_keeps_unicode_line_separators(tmp_path):
     from records import Example, read_jsonl, write_jsonl
 
-    rows = [Example(message_id="1", text="first second\x1cthird\x85", label="ham")]
+    rows = [Example(message_id="1", text="first\u2028second\x1cthird\x85", label="ham")]
     write_jsonl(tmp_path / "rows.jsonl", rows)
     assert read_jsonl(tmp_path / "rows.jsonl", Example) == rows

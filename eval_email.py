@@ -18,7 +18,7 @@ from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
 
-from braintrust import Eval
+from braintrust import Eval, EvalCase
 
 from contestants import contestants
 from records import Example, read_jsonl
@@ -32,16 +32,16 @@ TASKS = {
 }
 
 
-def cases(task: str) -> list[dict]:
+def cases(task: str) -> list[EvalCase[dict, str]]:
     """The test split as Braintrust cases, optionally cut to the first LIMIT rows of each class."""
     rows = read_jsonl(Path(__file__).parent / "data" / f"{task}_test.jsonl", Example)  # grouped by label
     kept = [r for _, group in groupby(rows, key=attrgetter("label")) for r in list(group)[: settings.limit or None]]
     return [
-        {
-            "input": {"text": r.text},
-            "expected": r.label,
-            "metadata": r.model_dump(include={"message_id", "intent"}, exclude_none=True) | {"expected_label": r.label},
-        }
+        EvalCase(
+            input={"text": r.text},
+            expected=r.label,
+            metadata=r.model_dump(include={"message_id", "intent"}, exclude_none=True) | {"expected_label": r.label},
+        )
         for r in kept
     ]
 
@@ -56,7 +56,7 @@ for contestant in contestants():
             settings.braintrust_project,
             experiment_name=f"{task}-{contestant.name}",
             description=description,
-            data=lambda task=task: cases(task),
+            data=cases(task),
             task=run,
             scores=scorers,
             metadata={"task": task, "contestant": contestant.name, "model": contestant.model},

@@ -72,9 +72,7 @@ def route_splits(con: duckdb.DuckDBPyConnection) -> dict[str, list[dict]]:
         from '{BITEXT}'
         order by lower(instruction)
     """)
-    unknown = con.sql(
-        f"select distinct label from bitext where label not in {tuple(CATEGORIES)}"
-    ).fetchall()
+    unknown = con.sql(f"select distinct label from bitext where label not in {tuple(CATEGORIES)}").fetchall()
     assert not unknown, f"Bitext has categories labels.py does not know: {unknown}"
 
     everything = _stratified(con, "select * from bitext", "label", None)
@@ -114,7 +112,7 @@ def _stratified(con: duckdb.DuckDBPyConnection, query: str, by: str, per_class: 
         ) {limit}
         order by {by}, hash(text)
     """)
-    return [dict(zip(rel.columns, row)) for row in rel.fetchall()]
+    return [dict(zip(rel.columns, row, strict=True)) for row in rel.fetchall()]
 
 
 def _split_head(rows: list[dict], by: str, head: int) -> tuple[list[dict], list[dict]]:

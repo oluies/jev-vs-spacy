@@ -14,12 +14,15 @@ SPAM, HAM = "spam", "ham"
 # Bitext's eleven customer-support categories, lower-cased, each described the way a support lead
 # would brief a new agent. The descriptions follow the dataset's intents so the labels are learnable.
 CATEGORIES: dict[str, str] = {
-    "account": "Creating, editing, deleting, switching or recovering a user account, or a registration problem.",
+    "account": ("Creating, editing, deleting, switching or recovering a user account, or a registration problem."),
     "order": "Placing, changing or cancelling an order, or tracking where an order is now.",
     "refund": "Asking for a refund, the refund policy, or the status of a refund.",
     "invoice": "Finding, viewing or downloading an invoice.",
     "payment": "Which payment methods are accepted, or a payment that failed.",
-    "delivery": "When a purchase will arrive (delivery time or date), or which delivery options exist and where the company delivers.",
+    "delivery": (
+        "When a purchase will arrive (delivery time or date), "
+        "or which delivery options exist and where the company delivers."
+    ),
     "shipping": "Setting up or changing the shipping address.",
     "cancel": "Fees, charges or penalties for cancelling or withdrawing, not the act of cancelling an order.",
     "subscription": "Subscribing to or unsubscribing from the newsletter.",
@@ -29,7 +32,9 @@ CATEGORIES: dict[str, str] = {
 
 # One `Literal` per category, each carrying its description, so the JSON schema is an `anyOf` of
 # `{const, description}` and Jev gets a criterion per option (a bare `Literal`/`Enum` would not).
-Category = Union[tuple(Annotated[Literal[name], Field(description=text)] for name, text in CATEGORIES.items())]
+# Built at runtime from the dict so the labels and their descriptions have one source; a static
+# checker cannot follow that, and `X | Y` cannot take a tuple, hence the two suppressions.
+Category = Union[tuple(Annotated[Literal[name], Field(description=text)] for name, text in CATEGORIES.items())]  # noqa: UP007  # ty: ignore[invalid-type-form]
 
 assert [get_args(get_args(member)[0])[0] for member in get_args(Category)] == list(CATEGORIES)
 
@@ -48,7 +53,7 @@ class SpamVerdict(BaseModel):
 class Routing(BaseModel):
     """Route a customer's support message to the team that handles it."""
 
-    category: Category = Field(description="What is the customer asking about?")
+    category: Category = Field(description="What is the customer asking about?")  # ty: ignore[invalid-type-form]
 
 
 # MASSIVE's eighteen voice-assistant scenarios (Swedish split). The requests are in Swedish; the
@@ -74,10 +79,10 @@ SCENARIOS: dict[str, str] = {
     "weather": "The weather or the forecast.",
 }
 
-Scenario = Union[tuple(Annotated[Literal[name], Field(description=text)] for name, text in SCENARIOS.items())]
+Scenario = Union[tuple(Annotated[Literal[name], Field(description=text)] for name, text in SCENARIOS.items())]  # noqa: UP007  # ty: ignore[invalid-type-form]
 
 
 class ScenarioSv(BaseModel):
     """Route a Swedish request to a voice assistant to the skill that handles it."""
 
-    scenario: Scenario = Field(description="Which skill should handle this request?")
+    scenario: Scenario = Field(description="Which skill should handle this request?")  # ty: ignore[invalid-type-form]

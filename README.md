@@ -28,6 +28,7 @@ uv run python data.py                    # download + split both datasets into d
 uv run python train_spacy.py             # ~6 min CPU: models/spam, models/route
 uv run python train_spacy.py --shots 20  # ~6 min CPU: models/*-20shot (each task, incl. scenario_sv)
 uv run pytest -q                         # offline: Jev and Claude paths against fakes
+uv run ruff format && uv run ruff check && uv run ty check   # format, lint, type-check (as CI does)
 
 export BRAINTRUST_API_KEY=... TYPESAFE_API_KEY=... ANTHROPIC_API_KEY=...
 LIMIT=5 uv run braintrust eval --no-send-logs eval_email.py  # smoke test, 5 rows per class

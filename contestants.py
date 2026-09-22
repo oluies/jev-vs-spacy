@@ -1,4 +1,4 @@
-"""The three classifiers under test, each exposing the same two tasks with the same output shape.
+"""The classifiers under test, each exposing the same tasks with the same output shape.
 
     spacy   the textcat pipelines from train_spacy.py, local, supervised on the task's own data
     spacy-<variant>  the same pipeline trained on less or different data: -20shot, or distill.py's
@@ -15,7 +15,7 @@ Every task returns `{"label": str, "confidence": float | None}` and records mode
 
 import os
 import re
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -34,7 +34,9 @@ JEV_MODEL = settings.jev_model
 LLM_MODEL = settings.llm_model
 
 Prediction = dict[str, Any]
-Task = Callable[[dict, Any], Prediction | Awaitable[Prediction]]
+SyncTask = Callable[[dict, Any], Prediction]  # spaCy: runs in-process
+AsyncTask = Callable[[dict, Any], Coroutine[Any, Any, Prediction]]  # Jev, Claude: an API call
+Task = SyncTask | AsyncTask
 
 
 @dataclass(frozen=True)
@@ -62,7 +64,7 @@ def _pipeline(name: str):
     return spacy.load(path)
 
 
-def _spacy(name: str) -> Task:
+def _spacy(name: str) -> SyncTask:
     def run(input: dict, hooks) -> Prediction:
         cats = _pipeline(name)(input["text"]).cats
         label = max(cats, key=cats.__getitem__)
@@ -75,7 +77,9 @@ def _spacy(name: str) -> Task:
 # --- Pydantic AI (Jev, Claude) -------------------------------------------------------------------
 
 
-def _agent_task(make_agent: Callable[[], Agent], field: str, to_label: Callable[[BaseModel], str]) -> Task:
+def _agent_task[O: BaseModel](
+    make_agent: Callable[[], Agent[Any, O]], field: str, to_label: Callable[[O], str]
+) -> AsyncTask:
     # Built on first use, not at import: a provider without its API key refuses to construct, and
     # a contestant whose key is missing is skipped rather than failing the whole run.
     agent = cache(make_agent)
@@ -107,19 +111,30 @@ def _scenario_label(request: ScenarioSv) -> str:
     return request.scenario
 
 
-# task -> (output schema, the field Jev's confidence is reported under, output -> label)
-SCHEMAS = {
-    "spam": (SpamVerdict, "is_spam", _spam_label),
-    "route": (Routing, "category", _route_label),
-    "scenario_sv": (ScenarioSv, "scenario", _scenario_label),
+@dataclass(frozen=True)
+class TaskSchema[O: BaseModel]:
+    """A task's output schema, the field Jev reports its confidence under, and how to read the label."""
+
+    output_type: type[O]
+    field: str
+    to_label: Callable[[O], str]
+
+    def task(self, make_agent: Callable[[type[O]], Agent[Any, O]]) -> AsyncTask:
+        return _agent_task(lambda: make_agent(self.output_type), self.field, self.to_label)
+
+
+SCHEMAS: dict[str, TaskSchema[Any]] = {
+    "spam": TaskSchema(SpamVerdict, "is_spam", _spam_label),
+    "route": TaskSchema(Routing, "category", _route_label),
+    "scenario_sv": TaskSchema(ScenarioSv, "scenario", _scenario_label),
 }
 
 
-def _jev(output_type: type[BaseModel], model: Model | str = JEV_MODEL) -> Agent:
+def _jev[O: BaseModel](output_type: type[O], model: Model | str = JEV_MODEL) -> Agent[Any, O]:
     return Agent(model, output_type=output_type)
 
 
-def _llm(output_type: type[BaseModel], model: Model | str = LLM_MODEL) -> Agent:
+def _llm[O: BaseModel](output_type: type[O], model: Model | str = LLM_MODEL) -> Agent[Any, O]:
     # NativeOutput is the API's structured-output mode, so the reply is always schema-valid JSON,
     # the same guarantee Jev makes. Low effort: a one-field classification needs little thinking,
     # and it keeps the latency comparison with Jev honest about what an LLM costs at its cheapest.
@@ -132,7 +147,9 @@ def _llm(output_type: type[BaseModel], model: Model | str = LLM_MODEL) -> Agent:
 
 def _spacy_tasks(suffix: str = "") -> dict[str, Task]:
     """A spaCy task for every schema task with a trained `models/<task><suffix>`."""
-    return {task: _spacy(task + suffix) for task in SCHEMAS if (ROOT / "models" / (task + suffix) / "model-best").exists()}
+    return {
+        task: _spacy(task + suffix) for task in SCHEMAS if (ROOT / "models" / (task + suffix) / "model-best").exists()
+    }
 
 
 def _variant_suffixes() -> list[str]:
@@ -158,11 +175,8 @@ def _describe(suffix: str) -> str:
     )
 
 
-def _agent_tasks(make_agent: Callable[[type[BaseModel]], Agent]) -> dict[str, Task]:
-    return {
-        task: _agent_task(lambda schema=schema: make_agent(schema), field, to_label)
-        for task, (schema, field, to_label) in SCHEMAS.items()
-    }
+def _agent_tasks(make_agent: Callable[[type[Any]], Agent[Any, Any]]) -> dict[str, Task]:
+    return {task: schema.task(make_agent) for task, schema in SCHEMAS.items()}
 
 
 def contestants() -> list[Contestant]:

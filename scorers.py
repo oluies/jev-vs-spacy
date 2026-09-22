@@ -10,16 +10,18 @@ from braintrust import Score
 
 from labels import SPAM
 
+# Braintrust calls scorers with keyword arguments: input, output, expected, metadata.
 
-def correct(output: dict, expected: str, **_) -> Score:
+
+def correct(input: dict, output: dict, expected: str, **_) -> Score:
     return Score(name="accuracy", score=float(output["label"] == expected))
 
 
-def recall_by_class(output: dict, expected: str, **_) -> Score:
+def recall_by_class(input: dict, output: dict, expected: str, **_) -> Score:
     return Score(name=f"recall · {expected}", score=float(output["label"] == expected))
 
 
-def spam_precision(output: dict, expected: str, **_) -> Score | None:
+def spam_precision(input: dict, output: dict, expected: str, **_) -> Score | None:
     """Of the mail the model would have quarantined, how much really was spam."""
     if output["label"] != SPAM:
         return None

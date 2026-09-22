@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
     env:
       PYDANTIC_AI_NO_BANNER: "1"
@@ -19,6 +19,9 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
+      - run: uv run ruff format --check
+      - run: uv run ruff check
+      - run: uv run ty check
       # Offline: Jev and Claude run against fakes, so no API keys are needed. The spaCy test
       # skips because models/ is not committed (training takes minutes and downloads datasets).
       - run: uv run pytest -q -rs

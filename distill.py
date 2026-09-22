@@ -20,9 +20,10 @@ import asyncio
 import logging
 import random
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 
-from contestants import SCHEMAS, _agent_task, _jev
+from contestants import SCHEMAS, _jev
 from records import Example, JevLabelled, read_jsonl, write_jsonl
 from train_spacy import read, train_model
 
@@ -42,8 +43,7 @@ def sample_pool(task: str, size: int, seed: int = 0) -> list[Example]:
 
 
 async def jev_label(task: str, pool: list[Example], concurrency: int = 8) -> list[JevLabelled]:
-    schema, field, to_label = SCHEMAS[task]
-    run = _agent_task(lambda: _jev(schema), field, to_label)
+    run = SCHEMAS[task].task(_jev)
     gate = asyncio.Semaphore(concurrency)
 
     async def one(row: Example) -> JevLabelled:
@@ -60,7 +60,7 @@ def _confident(row: JevLabelled) -> bool:
     return row.confidence is not None and row.confidence >= CONFIDENT
 
 
-def variants(labelled: list[JevLabelled], size: int) -> dict[str, list[Example]]:
+def variants(labelled: list[JevLabelled], size: int) -> dict[str, Sequence[Example]]:
     """Training rows per model suffix, all from the same pool."""
     return {
         f"gold{size}": [r.model_copy(update={"label": r.gold}) for r in labelled],
@@ -80,7 +80,10 @@ def report(task: str, labelled: list[JevLabelled]) -> None:
     missing = {r.gold for r in labelled} - {r.label for r in confident}
     if missing:
         print(f"  classes with no confident Jev label (the jev80 model never sees them): {sorted(missing)}")
-    print("  most common disagreements:", Counter(f"{r.gold}->{r.label}" for r in labelled if r.label != r.gold).most_common(5))
+    print(
+        "  most common disagreements:",
+        Counter(f"{r.gold}->{r.label}" for r in labelled if r.label != r.gold).most_common(5),
+    )
 
 
 def main() -> None:

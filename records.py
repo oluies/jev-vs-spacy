@@ -4,6 +4,7 @@ Every file the scripts pass to each other goes through these models, so a missin
 wrong type or a stray key fails at the file boundary rather than inside training or an eval.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -33,5 +34,5 @@ def read_jsonl[M: BaseModel](path: Path, model: type[M]) -> list[M]:
     return [model.model_validate_json(line) for line in path.read_text().split("\n") if line]
 
 
-def write_jsonl(path: Path, rows: list[BaseModel]) -> None:
+def write_jsonl(path: Path, rows: Sequence[BaseModel]) -> None:
     path.write_text("".join(row.model_dump_json(exclude_none=True) + "\n" for row in rows))

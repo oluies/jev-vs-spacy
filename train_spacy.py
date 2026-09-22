@@ -10,6 +10,7 @@ does spaCy need before it wins?
 """
 
 import argparse
+from collections.abc import Sequence
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
@@ -32,11 +33,11 @@ def read(task: str, split: str) -> list[Example]:
     return read_jsonl(ROOT / "data" / f"{task}_{split}.jsonl", Example)
 
 
-def to_docbin(rows: list[Example], labels: list[str], lang: str) -> DocBin:
+def to_docbin(rows: Sequence[Example], labels: list[str], lang: str) -> DocBin:
     """One-hot `doc.cats` over every label, which is what an exclusive `textcat` trains against."""
     nlp = spacy.blank(lang)
     docs = (nlp.make_doc(r.text) for r in rows)
-    return DocBin(docs=[_labelled(doc, row.label, labels) for doc, row in zip(docs, rows)])
+    return DocBin(docs=[_labelled(doc, row.label, labels) for doc, row in zip(docs, rows, strict=True)])
 
 
 def _labelled(doc, label: str, labels: list[str]):
@@ -68,7 +69,7 @@ def _small_data(rows: int) -> dict:
             return {}
 
 
-def train_model(task: str, name: str, rows: list[Example]) -> Path:
+def train_model(task: str, name: str, rows: Sequence[Example]) -> Path:
     """Train `models/<name>` for `task` on `rows`, picking the best
     checkpoint on the task's gold-labelled dev split."""
     corpus = ROOT / "corpus" / name
