@@ -177,6 +177,14 @@ What TypeSafe's [privacy policy](https://typesafe.ai/legal/privacy-policy) says 
   Third-party write-ups report zero data retention on the enterprise tier only.
 - **Sharing:** input is not disclosed to third parties "other than our service providers". The policy
   gives no list of subprocessors and names no SCCs or DPA.
+- **EU-U.S. Data Privacy Framework:** TypeSafe was **not listed** as a DPF participant as of 2026-09-18.
+  A review on that date paged through every active participant under "T" in the
+  [official DPF list](https://www.dataprivacyframework.gov/list) and did not find it
+  ([source](https://wunderlandmedia.com/typesafe-ai-jev-terms-of-service-gdpr)). According to the same
+  review, transfers rely on standard contractual clauses instead; the subprocessors are AWS, Modal, Slack
+  and Google Workspace, all US-based; and there is no EU region (only us-west). To check the current
+  status yourself, search for "TypeSafe" in the
+  [DPF participant search](https://www.dataprivacyframework.gov/s/participant-search).
 - **Self-hosting:** none. Jev is a closed, hosted API in early access, with no on-premise or open-weight
   option published.
 
