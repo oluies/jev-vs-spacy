@@ -9,6 +9,7 @@ two email tasks, the same test rows and the same deterministic scorers:
 | `spacy-20shot` | the same pipeline trained on only 20 labelled examples per class | nothing |
 | `jev` | [TypeSafe Jev](https://pydantic.dev/docs/ai/models/typesafe/), a System One decision model, zero-shot | `TYPESAFE_API_KEY` |
 | `laya` | [Laya](https://github.com/NandhaKishorM/laya) 0.3.5, an open-weight System One model (Apache 2.0), run **locally**, zero-shot, asked exactly the questions Jev is asked | `uv sync --group laya` (torch, ~3 GB of checkpoints) |
+| `open-jev` | [Open-Jev-9B](https://huggingface.co/ZefanCai/Open-Jev-9B), an open-weights reproduction of Jev's *interface* on Qwen3.5-9B, run **locally**: the `jev` contestant with `TYPESAFE_BASE_URL` pointed at its server | a 16 GB GPU or Apple Silicon, 18 GB of weights |
 | `claude` | Claude Opus 5 via structured output at `effort=low`, zero-shot, the same schema Jev reads | `ANTHROPIC_API_KEY` |
 
 | task | data | test set |
@@ -60,7 +61,7 @@ recall, and `precision · spam`, only scored on rows predicted spam, gives true 
 
 ## Results (2026-09-21, full test sets; Claude not run)
 
-![Accuracy of Jev and spaCy on English spam, English support routing and Swedish routing](figures/jev_vs_spacy.png)
+![Accuracy of Jev, Laya, Open-Jev-9B and spaCy on English spam, English support routing and Swedish routing](figures/jev_vs_spacy.png)
 
 
 | | spam acc | spam recall | spam precision | route acc | p50 latency | p95 latency |
@@ -69,6 +70,7 @@ recall, and `precision · spam`, only scored on rows predicted spam, gives true 
 | spaCy, 20 labelled per class | 73.7% | 61.3% | 81.4% | 94.2% | 0.4–2 ms | 0.4–8 ms |
 | **Jev, zero-shot** (`jev-latest`) | **98.0%** | **97.3%** | **98.6%** | **97.8%** | ~300 ms | ~375–400 ms |
 | Laya, zero-shot, local (Apple MPS) | 97.0% | 99.3% | 94.9% | 87.6% | 47–66 ms | |
+| Open-Jev-9B, zero-shot, local (Apple MPS) | 92.7% | 86.7% | 98.5% | 87.3% | 0.4–2.0 s | 1.1–2.3 s |
 | Claude Opus 5, zero-shot | – | – | – | – | – | – |
 
 **Swedish (`scenario_sv`, 360 test requests, not logged to Braintrust: the month's score quota was used up)**
@@ -79,6 +81,7 @@ recall, and `precision · spam`, only scored on rows predicted spam, gives true 
 | spaCy + `sv_core_news_md` vectors, 20 labelled per class | 68.3% | 0.4 ms |
 | **Jev, zero-shot** (English criteria, Swedish text) | **88.9%** | ~306 ms |
 | Laya `laya-multilingual`, zero-shot, local | 54.4% | 26 ms |
+| Open-Jev-9B, zero-shot, local | 69.7% | ~2.9 s |
 
 Jev beat even the fully trained Swedish spaCy model here. At confidence ≥ 0.8 (85% of requests) it
 scored 94.4%. Most errors involve MASSIVE's catch-all `general` class and the `play`/`music` overlap,
@@ -122,6 +125,63 @@ Caveats: the English routing descriptions were tuned for Jev (on the dev split),
 tuned at all. Laya was released on 2026-09-18, so it may improve quickly. Laya's own benchmarks
 use other datasets. The source was reviewed before installing: weights load through `safetensors`,
 with no `trust_remote_code` and no network calls beyond the Hugging Face download.
+
+## Open-Jev-9B: the other open-weight route (2026-09-25)
+
+Laya answers Jev's questions with its own encoder. [Open-Jev](https://github.com/Zefan-Cai/Open-Jev)
+takes the opposite route and reproduces Jev's *interface* on a decoder:
+[`Open-Jev-9B`](https://huggingface.co/ZefanCai/Open-Jev-9B) is a LoRA adapter (rank 8) plus a trained
+scalar decision head and a calibration temperature on `Qwen/Qwen3.5-9B`. It scores each candidate as its
+own forward pass, with no generated text to parse. It is not TypeSafe's model, and nobody outside its
+authors has benchmarked it:
+[DecisionEval](https://decisioneval.dev/compare/open-jev-9b-vs-typesafe-jev/) says so in as many words.
+Its card's own figures (97.5% on its test split, 92.0% out of distribution) do not carry over here.
+
+Its server speaks the same `/v1/systemone` wire format the TypeSafe SDK posts and accepts `jev-latest`
+as an alias, so the `jev` contestant runs against it with no code change:
+
+```bash
+uv venv --python 3.12 jevenv && VIRTUAL_ENV=jevenv uv pip install \
+  "torch>=2.8" transformers==5.10.2 peft==0.19.1 accelerate==1.13.0 safetensors "huggingface_hub[cli]"
+git clone https://github.com/Zefan-Cai/Open-Jev && VIRTUAL_ENV=jevenv uv pip install ./Open-Jev
+jevenv/bin/hf download ZefanCai/Open-Jev-9B --include "package/checkpoint/*" --local-dir open-jev-9b
+PYTORCH_ENABLE_MPS_FALLBACK=1 jevenv/bin/python -m jev.server \
+  --checkpoint open-jev-9b/package/checkpoint --device mps --max-length 4096 --batch-size 2
+
+TYPESAFE_BASE_URL=http://127.0.0.1:8791 TYPESAFE_API_KEY=local \
+  uv run braintrust eval --no-send-logs eval_email.py
+```
+
+Measured on an M5 Pro (48 GB), bf16 on Metal, full test sets, one request at a time:
+
+| | Jev (API) | Laya (local) | Open-Jev-9B (local) |
+|---|---|---|---|
+| spam | **98.0%** | 97.0% | 92.7% (recall 86.7, precision 98.5) |
+| route | **97.8%** | 87.6% | 87.3% |
+| scenario_sv | **88.9%** | 54.4% | 69.7% |
+| p50 latency | ~300 ms | 26–66 ms | 417 ms – 2.86 s |
+
+- **Between the two local models the answer is per task.** Open-Jev is 15 points better in Swedish,
+  level in English routing, and 4 points worse on spam. Laya answers 50 times faster, which for spam,
+  where it is also more accurate, settles it.
+- **Latency scales with the number of options, because every candidate is its own forward pass.** One
+  sequence for the spam yes/no question, 11 for `route`, 18 for `scenario_sv`. Jev stays near 300 ms on
+  all three, so the gap widens as the label set grows. These figures are sequential: the server
+  serialises requests behind a lock, where the Jev numbers above ran 8 at a time.
+- **Swedish collapses toward one class.** `transport` absorbs 36 of the 109 errors (`lists → transport`
+  11 times, `email → transport` 9). Still well ahead of Laya's multilingual checkpoint.
+- **On spam it misses spam rather than quarantining real mail:** recall 86.7% against precision 98.5%,
+  the opposite skew to Laya's (99.3% recall, 94.9% precision).
+- **Confidence still works as a filter,** which is what `distill.py` needs: at confidence ≥ 0.8 it scores
+  99.2% on the 80% of spam it keeps, 100% on 22% of `route` and 95.7% on 19% of `scenario_sv`.
+
+Caveats: the English routing descriptions were tuned for Jev, not for this model. It needs about 15 GB
+resident in bf16, from 18 GB of Qwen weights on disk. `--batch-size 4` was killed under memory pressure
+on a 48 GB machine; `--batch-size 2` finished. Batch size changes memory only, not the answers: the
+server reassembles a split choice before it normalises. Qwen3.5's linear-attention layers fall back to a
+slow PyTorch path here, because the
+[flash-linear-attention](https://github.com/fla-org/flash-linear-attention) kernels are CUDA-only, so a
+CUDA machine would beat these latencies.
 
 ## Jev labels, spaCy learns (`distill.py`)
 
@@ -211,8 +271,8 @@ What TypeSafe's [privacy policy](https://typesafe.ai/legal/privacy-policy) says 
   and Google Workspace, all US-based; and there is no EU region (only us-west). To check the current
   status yourself, search for "TypeSafe" in the
   [DPF participant search](https://www.dataprivacyframework.gov/s/participant-search).
-- **Self-hosting:** none. Jev is a closed, hosted API in early access, with no on-premise or open-weight
-  option published.
+- **Self-hosting:** none from TypeSafe. Jev is a closed, hosted API in early access, with no on-premise
+  or open-weight option published. Laya and Open-Jev-9B are independent models, not TypeSafe's weights.
 
 So sending real email through Jev is a GDPR decision for your DPO, not only an engineering one. At a
 minimum it needs a DPA, a transfer mechanism for US processing, and a retention agreement. Ways to
@@ -222,7 +282,9 @@ keep the text in-house, from strictest to loosest:
 2. **Jev only at training time (`distill.py`):** Jev labels a training pool once, and production
    runs spaCy locally with no external calls. On Swedish this matched human labels (82.5% vs 82.8%).
    Label a pool that is already public, synthetic or pseudonymised, and no real mail ever leaves.
-3. **Pseudonymise before each call:** replace names, addresses and numbers with placeholders first
+3. **A local System One model:** Laya or self-hosted Open-Jev-9B answers the same questions from the
+   same schemas with nothing leaving the machine, at 1 to 34 points of accuracy depending on the task.
+4. **Pseudonymise before each call:** replace names, addresses and numbers with placeholders first
    (spaCy's `sv_core_news_*` NER finds Swedish names). Categorisation rarely depends on who wrote the
    mail, but this reduces the personal data sent rather than removing it.
 

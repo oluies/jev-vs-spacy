@@ -8,25 +8,32 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 SURFACE, INK, INK_2, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984", "#e6e5e0"
-# Reference palette, categorical slots 1-4 in fixed order; bars are drawn in slot order so every
-# adjacent pair is a validated one. Colour follows the contestant: adding Laya repainted no one.
-# Label ink per bar: white on the darker three, dark on yellow (white fails contrast there).
+# Reference palette, categorical slots 1-5 in fixed order; bars are drawn in slot order so every
+# adjacent pair is a validated one. Colour follows the contestant: adding Laya, then Open-Jev,
+# repainted no one. Label ink per bar: white on the darker slots, dark on yellow (white fails
+# contrast there). Five series validated on this surface: worst adjacent CVD ΔE 9.1, normal-vision
+# ΔE 19.6. Aqua, yellow and magenta sit under 3:1 against the surface, which the value label on
+# every bar relieves.
 CONTESTANTS = [
     ("Jev (API, 0 labels)", "#2a78d6", "#ffffff"),
     ("spaCy, 20 labels per class", "#eb6834", "#ffffff"),
     ("spaCy, full training set", "#1baf7a", "#ffffff"),
     ("Laya (local, 0 labels)", "#eda100", INK),
+    ("Open-Jev-9B (local, 0 labels)", "#e87ba4", "#ffffff"),
 ]
 PANELS = [
-    ("Spam detection · Enron-Spam\n2 classes, 300 emails", [98.0, 73.7, 98.0, 97.0]),
-    ("Support routing · Bitext\n11 classes, 275 messages", [97.8, 94.2, 100.0, 87.6]),
-    ("Swedish routing · MASSIVE sv\n18 classes, 360 requests", [88.9, 68.3, 84.4, 54.4]),
+    ("Spam detection · Enron-Spam\n2 classes, 300 emails", [98.0, 73.7, 98.0, 97.0, 92.7]),
+    ("Support routing · Bitext\n11 classes, 275 messages", [97.8, 94.2, 100.0, 87.6, 87.3]),
+    ("Swedish routing · MASSIVE sv\n18 classes, 360 requests", [88.9, 68.3, 84.4, 54.4, 69.7]),
 ]
-LATENCY = "Median latency: Jev ~300 ms (API, US) · Laya 26–66 ms (local, Apple GPU) · spaCy 0.4–2 ms (local CPU)"
+LATENCY = (
+    "Median latency: Jev ~300 ms (API, US) · Laya 26–66 ms · Open-Jev-9B 0.4–2.9 s "
+    "(both local, Apple GPU) · spaCy 0.4–2 ms (local CPU)"
+)
 
 plt.rcParams.update({"font.family": "DejaVu Sans", "text.color": INK})
 fig, axes = plt.subplots(1, 3, figsize=(16, 9), dpi=100, facecolor=SURFACE)
-fig.subplots_adjust(left=0.04, right=0.97, top=0.68, bottom=0.2, wspace=0.14)
+fig.subplots_adjust(left=0.04, right=0.96, top=0.68, bottom=0.2, wspace=0.14)
 
 fig.text(
     0.04,
@@ -40,9 +47,12 @@ fig.text(
     0.04,
     0.86,
     "Accuracy on held-out test sets, same rows and scorers for every model · "
-    "Swedish spaCy uses sv_core_news_md vectors",
-    fontsize=17,
+    "Swedish spaCy uses sv_core_news_md vectors\n"
+    "Laya and Open-Jev-9B are open-weight models run locally; neither is TypeSafe's model",
+    fontsize=16,
     color=INK_2,
+    linespacing=1.45,
+    va="top",
 )
 
 for ax, (title, values) in zip(axes, PANELS, strict=True):
@@ -66,14 +76,14 @@ fig.legend(
     handles,
     [n for n, _, _ in CONTESTANTS],
     loc="lower left",
-    bbox_to_anchor=(0.035, 0.085),
-    ncol=4,
+    bbox_to_anchor=(0.03, 0.085),
+    ncol=5,
     frameon=False,
-    fontsize=16,
-    handlelength=1.2,
-    columnspacing=1.8,
+    fontsize=14,
+    handlelength=1.1,
+    columnspacing=1.2,
 )
-fig.text(0.04, 0.035, LATENCY + "  ·  Sept 2026", fontsize=15, color=INK_2)
+fig.text(0.04, 0.035, LATENCY + "  ·  Sept 2026", fontsize=14, color=INK_2)
 
 out = Path(__file__).with_name("jev_vs_spacy.png")
 fig.savefig(out, facecolor=SURFACE)
