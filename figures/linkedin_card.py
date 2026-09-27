@@ -10,16 +10,20 @@ import matplotlib.pyplot as plt
 SURFACE, INK, INK_2, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984", "#e6e5e0"
 # Reference palette, categorical slots 1-5 in fixed order; bars are drawn in slot order so every
 # adjacent pair is a validated one. Colour follows the contestant: adding Laya, then Open-Jev,
-# repainted no one. Label ink per bar: white on the darker slots, dark on yellow (white fails
-# contrast there). Five series validated on this surface: worst adjacent CVD ΔE 9.1, normal-vision
-# ΔE 19.6. Aqua, yellow and magenta sit under 3:1 against the surface, which the value label on
-# every bar relieves.
+# repainted no one. Five series validated on this surface: worst adjacent CVD ΔE 9.1, normal-vision
+# ΔE 19.6.
+# Two different contrasts matter here, and only the first is the validator's business:
+#   bar vs surface - #1baf7a 2.8:1, #eda100 2.1:1 and #e87ba4 2.7:1 are under 3:1, which the value
+#     label on every bar relieves;
+#   label ink vs its own bar - white clears 3:1 only on the darker slots, so the two light ones
+#     (#eda100 9.1:1 and #e87ba4 7.3:1 with dark ink) label in INK instead. 18 pt bold is large
+#     text, so 3:1 is the floor.
 CONTESTANTS = [
     ("Jev (API, 0 labels)", "#2a78d6", "#ffffff"),
     ("spaCy, 20 labels per class", "#eb6834", "#ffffff"),
     ("spaCy, full training set", "#1baf7a", "#ffffff"),
     ("Laya (local, 0 labels)", "#eda100", INK),
-    ("Open-Jev-9B (local, 0 labels)", "#e87ba4", "#ffffff"),
+    ("Open-Jev-9B (local, 0 labels)", "#e87ba4", INK),
 ]
 PANELS = [
     ("Spam detection · Enron-Spam\n2 classes, 300 emails", [98.0, 73.7, 98.0, 97.0, 92.7]),

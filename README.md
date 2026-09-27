@@ -9,7 +9,7 @@ two email tasks, the same test rows and the same deterministic scorers:
 | `spacy-20shot` | the same pipeline trained on only 20 labelled examples per class | nothing |
 | `jev` | [TypeSafe Jev](https://pydantic.dev/docs/ai/models/typesafe/), a System One decision model, zero-shot | `TYPESAFE_API_KEY` |
 | `laya` | [Laya](https://github.com/NandhaKishorM/laya) 0.3.5, an open-weight System One model (Apache 2.0), run **locally**, zero-shot, asked exactly the questions Jev is asked | `uv sync --group laya` (torch, ~3 GB of checkpoints) |
-| `open-jev` | [Open-Jev-9B](https://huggingface.co/ZefanCai/Open-Jev-9B), an open-weights reproduction of Jev's *interface* on Qwen3.5-9B, run **locally**: the `jev` contestant with `TYPESAFE_BASE_URL` pointed at its server | a 16 GB GPU or Apple Silicon, 18 GB of weights |
+| `jev`, repointed | not a contestant of its own: the `jev` contestant with `TYPESAFE_BASE_URL` aimed at a local [Open-Jev-9B](https://huggingface.co/ZefanCai/Open-Jev-9B) server, an open-weights reproduction of Jev's *interface* on Qwen3.5-9B | well over 16 GB of GPU or unified memory, 18 GB of weights on disk |
 | `claude` | Claude Opus 5 via structured output at `effort=low`, zero-shot, the same schema Jev reads | `ANTHROPIC_API_KEY` |
 
 | task | data | test set |
@@ -152,6 +152,10 @@ TYPESAFE_BASE_URL=http://127.0.0.1:8791 TYPESAFE_API_KEY=local \
   uv run braintrust eval --no-send-logs eval_email.py
 ```
 
+Because it *is* the `jev` contestant, its experiments are named `spam-jev`, `route-jev` and
+`scenario_sv-jev` and carry `model: typesafe:jev-latest`, exactly like a hosted run. Give the
+self-hosted run its own `BRAINTRUST_PROJECT`, or `--no-send-logs`, or the two overwrite each other.
+
 Measured on an M5 Pro (48 GB), bf16 on Metal, full test sets, one request at a time:
 
 | | Jev (API) | Laya (local) | Open-Jev-9B (local) |
@@ -175,9 +179,12 @@ Measured on an M5 Pro (48 GB), bf16 on Metal, full test sets, one request at a t
 - **Confidence still works as a filter,** which is what `distill.py` needs: at confidence ≥ 0.8 it scores
   99.2% on the 80% of spam it keeps, 100% on 22% of `route` and 95.7% on 19% of `scenario_sv`.
 
-Caveats: the English routing descriptions were tuned for Jev, not for this model. It needs about 15 GB
-resident in bf16, from 18 GB of Qwen weights on disk. `--batch-size 4` was killed under memory pressure
-on a 48 GB machine; `--batch-size 2` finished. Batch size changes memory only, not the answers: the
+Caveats: the English routing descriptions were tuned for Jev, not for this model. Its resident set is
+smaller than the 18 GB of weights on disk because Qwen3.5-9B is multimodal and Open-Jev keeps only
+`model.language_model` (14.78 GiB in bf16), dropping the vision tower, `mtp` and `lm_head` right after
+load. Plus activations, that is comfortably more than a 16 GB card holds; 48 GB is the only machine
+this was run on, so treat the floor as untested. `--batch-size 4` was killed under memory pressure
+there; `--batch-size 2` finished. Batch size changes memory only, not the answers: the
 server reassembles a split choice before it normalises. Qwen3.5's linear-attention layers fall back to a
 slow PyTorch path here, because the
 [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) kernels are CUDA-only, so a
@@ -283,7 +290,8 @@ keep the text in-house, from strictest to loosest:
    runs spaCy locally with no external calls. On Swedish this matched human labels (82.5% vs 82.8%).
    Label a pool that is already public, synthetic or pseudonymised, and no real mail ever leaves.
 3. **A local System One model:** Laya or self-hosted Open-Jev-9B answers the same questions from the
-   same schemas with nothing leaving the machine, at 1 to 34 points of accuracy depending on the task.
+   same schemas with nothing leaving the machine. Taking whichever of the two is better at each task,
+   that costs about 1 point on spam, 10 on English routing and 19 on Swedish.
 4. **Pseudonymise before each call:** replace names, addresses and numbers with placeholders first
    (spaCy's `sv_core_news_*` NER finds Swedish names). Categorisation rarely depends on who wrote the
    mail, but this reduces the personal data sent rather than removing it.
