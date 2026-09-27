@@ -278,6 +278,16 @@ What TypeSafe's [privacy policy](https://typesafe.ai/legal/privacy-policy) says 
   and Google Workspace, all US-based; and there is no EU region (only us-west). To check the current
   status yourself, search for "TypeSafe" in the
   [DPF participant search](https://www.dataprivacyframework.gov/s/participant-search).
+- **The DPF itself is wobbling:** on 2026-07-03 IMY, the Swedish DPA, warned that the US Supreme
+  Court's *Trump v. Slaughter* — a president may remove FTC members without cause — puts the
+  independence of the FTC and the PCLOB in question, and both are load-bearing for the DPF adequacy
+  decision, which the Commission could withdraw. IMY's advice is to stay informed and to keep the
+  ability to get your data back out of a US provider
+  ([IMY](https://www.imy.se/nyheter/amerikansk-dom-kan-paverka-overforingar-till-usa/)). TypeSafe is
+  not a DPF participant, so adequacy is not its transfer basis and a withdrawal would not strike it
+  directly. The same facts still land on it: the PCLOB is the oversight body the EO 14086 redress
+  mechanism leans on, and that mechanism is much of what a transfer impact assessment relies on when
+  it signs off SCCs for US processing.
 - **US surveillance law:** US hosting also brings US intelligence law, which is what *Schrems II*
   turned on. A FISA Section 702 directive can be served on an "electronic communication service
   provider", a definition that reaches remote computing services (50 U.S.C. § 1881(b)(4), citing
@@ -309,6 +319,14 @@ keep the text in-house, from strictest to loosest:
 4. **Pseudonymise before each call:** replace names, addresses and numbers with placeholders first
    (spaCy's `sv_core_news_*` NER finds Swedish names). Categorisation rarely depends on who wrote the
    mail, but this reduces the personal data sent rather than removing it.
+
+One more Swedish angle, on the deployer rather than on TypeSafe: from 2027 IMY is also Sweden's market
+surveillance authority for parts of the AI Act, specifically AI used in law enforcement and in credit
+assessment, alongside PTS and Finansinspektionen, and it runs the regulatory sandbox with
+data-protection guidance
+([IMY](https://www.imy.se/nyheter/imy-blir-marknadskontrollmyndighet-for-ai-forordningen/)). Sorting
+support mail is not one of Annex III's high-risk uses, so nothing here falls in that scope. The same
+schemas pointed at a credit decision or a police matter would.
 
 ## What this can and cannot tell you
 
