@@ -15,13 +15,13 @@ SURFACE, INK, INK_2, MUTED, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#8a8984", "
 # Two different contrasts matter here, and only the first is the validator's business:
 #   bar vs surface - #1baf7a 2.8:1, #eda100 2.1:1 and #e87ba4 2.7:1 are under 3:1, which the value
 #     label on every bar relieves;
-#   label ink vs its own bar - white clears 3:1 only on the darker slots, so the two light ones
-#     (#eda100 9.1:1 and #e87ba4 7.3:1 with dark ink) label in INK instead. 18 pt bold is large
-#     text, so 3:1 is the floor.
+#   label ink vs its own bar - 18 pt bold is large text, so the floor is 3:1. Measured white / dark:
+#     #2a78d6 4.4 / 4.5, #eb6834 3.2 / 6.2, #1baf7a 2.8 / 7.0, #eda100 2.2 / 9.1, #e87ba4 2.7 / 7.3.
+#     The three light slots fail in white, so they label in INK.
 CONTESTANTS = [
     ("Jev (API, 0 labels)", "#2a78d6", "#ffffff"),
     ("spaCy, 20 labels per class", "#eb6834", "#ffffff"),
-    ("spaCy, full training set", "#1baf7a", "#ffffff"),
+    ("spaCy, full training set", "#1baf7a", INK),
     ("Laya (local, 0 labels)", "#eda100", INK),
     ("Open-Jev-9B (local, 0 labels)", "#e87ba4", INK),
 ]
