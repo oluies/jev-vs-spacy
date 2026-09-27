@@ -278,6 +278,20 @@ What TypeSafe's [privacy policy](https://typesafe.ai/legal/privacy-policy) says 
   and Google Workspace, all US-based; and there is no EU region (only us-west). To check the current
   status yourself, search for "TypeSafe" in the
   [DPF participant search](https://www.dataprivacyframework.gov/s/participant-search).
+- **US surveillance law:** US hosting also brings US intelligence law, which is what *Schrems II*
+  turned on. A FISA Section 702 directive can be served on an "electronic communication service
+  provider", a definition that reaches remote computing services (50 U.S.C. § 1881(b)(4), citing
+  18 U.S.C. § 2711), and the 2024 RISAA reauthorisation widened it further. A US-hosted API that
+  holds customer content is therefore the *kind* of company that can be served; whether TypeSafe
+  qualifies is a legal characterisation, and nothing published says it has received a directive.
+  Section 702's authority **lapsed in June 2026** when Congress missed the RISAA deadline, which is
+  less relief than it sounds: certifications the FISA Court approved in March 2026 are grandfathered
+  and run to about March 2027, directives issued under them stay binding, and reauthorisation is
+  still being negotiated
+  ([Brennan Center](https://www.brennancenter.org/our-work/research-reports/section-702-foreign-intelligence-surveillance-act-fisa-2026-resource-page),
+  [NPR](https://www.npr.org/2026/06/12/nx-s1-5856291/fisa-702-surveillance-expiration-bill-pulte)).
+  The CLOUD Act is a separate authority and is unaffected. None of this changes the options below;
+  it is why they exist.
 - **Self-hosting:** none from TypeSafe. Jev is a closed, hosted API in early access, with no on-premise
   or open-weight option published. Laya and Open-Jev-9B are independent models, not TypeSafe's weights.
 
