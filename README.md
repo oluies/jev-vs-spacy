@@ -280,7 +280,7 @@ What TypeSafe's [privacy policy](https://typesafe.ai/legal/privacy-policy) says 
   [DPF participant search](https://www.dataprivacyframework.gov/s/participant-search).
 - **The DPF itself is wobbling:** on 2026-07-03 IMY, the Swedish DPA, warned that the US Supreme
   Court's *Trump v. Slaughter* — a president may remove FTC members without cause — puts the
-  independence of the FTC and the PCLOB in question, and both are load-bearing for the DPF adequacy
+  independence of the FTC and the PCLOB in question, and both are significant for the DPF adequacy
   decision, which the Commission could withdraw. IMY's advice is to stay informed and to keep the
   ability to get your data back out of a US provider
   ([IMY](https://www.imy.se/nyheter/amerikansk-dom-kan-paverka-overforingar-till-usa/)). TypeSafe is
