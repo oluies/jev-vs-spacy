@@ -32,6 +32,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0  # scan the whole history, not just the tip
-      - uses: trufflesecurity/trufflehog@v3.97.5
+      - uses: trufflesecurity/trufflehog@v3.99.7
         with:
           extra_args: --results=verified,unknown
