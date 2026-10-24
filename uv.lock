@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [[package]]
@@ -784,7 +784,7 @@ dev = [
     { name = "ruff", specifier = ">=0.16.8" },
     { name = "ty", specifier = ">=0.0.83" },
 ]
-laya = [{ name = "laya", specifier = "==0.3.5" }]
+laya = [{ name = "laya", specifier = "==0.4.14" }]
 
 [[package]]
 name = "jinja2"
@@ -996,7 +996,7 @@ wheels = [
 
 [[package]]
 name = "laya"
-version = "0.3.5"
+version = "0.4.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -1005,9 +1005,9 @@ dependencies = [
     { name = "torch" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/f1/12459ecda42123f93da36f9f1e0c9b7b9191648fa68e7e0b09d292cc6dce/laya-0.3.5.tar.gz", hash = "sha256:5e8a4c2b38dbddc0febe7443f26f74fd9d7571fb172648b1481830c667d59219", size = 69616, upload-time = "2026-09-21T18:20:10.029Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/47/dbbd333bf4920fddee23d250e167820760e9db3eec081145f424cff4a0a1/laya-0.4.14.tar.gz", hash = "sha256:3218cc4fb5fe8905f78a54a3d91feba7bfb0e939ae87fa7956929b7fbed268db", size = 1332291, upload-time = "2026-10-23T12:50:29.659Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/1c/a9903d5c3c51579f45f9656f733c8a2d985b16a3cb7594edf45369d1f995/laya-0.3.5-py3-none-any.whl", hash = "sha256:4c57f64cbaf893bb5c7b4affddc2bf21a819f55df51941689f11868583be2903", size = 41658, upload-time = "2026-09-21T18:20:08.641Z" },
+    { url = "https://files.pythonhosted.org/packages/89/6a/e8fd7c88ba87cec0896bf1edb9742f512c7dc79d7107270e88e624785f45/laya-0.4.14-py3-none-any.whl", hash = "sha256:e547dd6670528114458355f66666b1e5f23e481361ba658a7e8a635e8b080e8a", size = 442980, upload-time = "2026-10-23T12:50:28.096Z" },
 ]
 
 [[package]]
