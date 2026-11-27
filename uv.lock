@@ -920,7 +920,7 @@ dev = [
     { name = "ruff", specifier = ">=0.16.8" },
     { name = "ty", specifier = ">=0.0.83" },
 ]
-laya = [{ name = "laya", specifier = "==0.5.3" }]
+laya = [{ name = "laya", specifier = "==0.5.6" }]
 
 [[package]]
 name = "jinja2"
@@ -1132,7 +1132,7 @@ wheels = [
 
 [[package]]
 name = "laya"
-version = "0.5.3"
+version = "0.5.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -1143,9 +1143,9 @@ dependencies = [
     { name = "transformers" },
     { name = "vegaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/5b/33d77c1a9e1cea230aed3efc34c84156516fdaa664f4eff4bdc62d0da46d/laya-0.5.3.tar.gz", hash = "sha256:0e682e17c75bb6950a3b77d7ab872a4efbfdb1d03321a8ec1594752276f0e8ca", size = 1496848, upload-time = "2026-11-23T10:47:13.942Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/ab/107e5ede3fd8b1af39bb3cbcb878f63d770fa87257e3eeb5d1d70ddde370/laya-0.5.6.tar.gz", hash = "sha256:81548e2aae5d3241e0fde149d0ed600391ba67963580dff41fc3ddda555f3308", size = 1497374, upload-time = "2026-11-27T14:15:11.611Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/1f/84753e0d4e311b8011d0b1acfc2bc25b6aa8f36c0b0a970e641e9871cb7f/laya-0.5.3-py3-none-any.whl", hash = "sha256:308e75b8e3d7d1edccd2dfddb081f38a989a46e5afd9bfa9e4e27e84316e9f61", size = 511434, upload-time = "2026-11-23T10:47:12.507Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/61/e4698b39dfed9ff187e2f7022640be5a15e7cab255642493cb1fe6410dc3/laya-0.5.6-py3-none-any.whl", hash = "sha256:afe35961bfabb03debb3d332f90891086d29d3a32c677c95be0ab364d380ee80", size = 511597, upload-time = "2026-11-27T14:15:09.925Z" },
 ]
 
 [[package]]

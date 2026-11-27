@@ -23,7 +23,7 @@ dev = [
     "ty>=0.0.83",
 ]
 laya = [
-    "laya==0.5.3",
+    "laya==0.5.6",
 ]
 
 [tool.uv.sources]
